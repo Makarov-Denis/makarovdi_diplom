@@ -1,6 +1,4 @@
-# makarovdi_diplom
 
-![image](https://github.com/user-attachments/assets/4324172a-dfa8-4436-bb64-3f88633dda71)
 
 
 ```
