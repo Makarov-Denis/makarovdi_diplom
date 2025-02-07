@@ -572,6 +572,49 @@ kube-prometheus-stack has been installed. Check its status by running:
 Visit https://github.com/prometheus-operator/kube-prometheus for instructions on how to create & configure Alertmanager and Prometheus instances using the Operator.
 
 ```
+```
+admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom/test_myapp$ kubectl get all -n monitoring 
+NAME                                                         READY   STATUS    RESTARTS   AGE
+pod/alertmanager-stable-kube-prometheus-sta-alertmanager-0   2/2     Running   0          3h33m
+pod/myapp-8xrdb                                              1/1     Running   0          82s
+pod/myapp-sb4zz                                              1/1     Running   0          82s
+pod/prometheus-stable-kube-prometheus-sta-prometheus-0       2/2     Running   0          3h33m
+pod/stable-grafana-6fbcd7ccb7-jbd69                          3/3     Running   0          3h33m
+pod/stable-kube-prometheus-sta-operator-55cd967c67-dpcwg     1/1     Running   0          3h33m
+pod/stable-kube-state-metrics-84d77f7b7c-gqdbt               1/1     Running   0          3h33m
+pod/stable-prometheus-node-exporter-c5kkb                    0/1     Pending   0          3h33m
+pod/stable-prometheus-node-exporter-qb9hw                    0/1     Pending   0          3h33m
+pod/stable-prometheus-node-exporter-xrphp                    0/1     Pending   0          3h33m
+
+NAME                                              TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                         AGE
+service/alertmanager-operated                     ClusterIP      None            <none>        9093/TCP,9094/TCP,9094/UDP      3h33m
+service/myapp-service                             NodePort       10.233.24.69    <none>        80:30080/TCP                    83s
+service/prometheus-operated                       ClusterIP      None            <none>        9090/TCP                        3h33m
+service/stable-grafana                            LoadBalancer   10.233.55.81    <pending>     80:30200/TCP                    3h33m
+service/stable-kube-prometheus-sta-alertmanager   ClusterIP      10.233.25.165   <none>        9093/TCP,8080/TCP               3h33m
+service/stable-kube-prometheus-sta-operator       ClusterIP      10.233.63.22    <none>        443/TCP                         3h33m
+service/stable-kube-prometheus-sta-prometheus     LoadBalancer   10.233.8.172    <pending>     9090:30100/TCP,8080:32095/TCP   3h33m
+service/stable-kube-state-metrics                 ClusterIP      10.233.57.178   <none>        8080/TCP                        3h33m
+service/stable-prometheus-node-exporter           ClusterIP      10.233.40.17    <none>        9100/TCP                        3h33m
+
+NAME                                             DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE
+daemonset.apps/myapp                             2         2         2       2            2           <none>                   83s
+daemonset.apps/stable-prometheus-node-exporter   3         3         0       3            0           kubernetes.io/os=linux   3h33m
+
+NAME                                                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/stable-grafana                        1/1     1            1           3h33m
+deployment.apps/stable-kube-prometheus-sta-operator   1/1     1            1           3h33m
+deployment.apps/stable-kube-state-metrics             1/1     1            1           3h33m
+
+NAME                                                             DESIRED   CURRENT   READY   AGE
+replicaset.apps/stable-grafana-6fbcd7ccb7                        1         1         1       3h33m
+replicaset.apps/stable-kube-prometheus-sta-operator-55cd967c67   1         1         1       3h33m
+replicaset.apps/stable-kube-state-metrics-84d77f7b7c             1         1         1       3h33m
+
+NAME                                                                    READY   AGE
+statefulset.apps/alertmanager-stable-kube-prometheus-sta-alertmanager   1/1     3h33m
+statefulset.apps/prometheus-stable-kube-prometheus-sta-prometheus       1/1     3h33m
+```
 
 
 
