@@ -758,7 +758,7 @@ d6c6d644c8d3   dimakarov/nginx-static-app:latest   "/docker-entrypoint.…"   4 
 
 ![image](https://github.com/user-attachments/assets/863af74a-4dff-476c-86cb-b6a227d645c2)
 - Образ успешно собран и приложение отвечает, отправим его в DockerHub:
-- 
+  
 ```bash
 admden@admden-VirtualBox:~/test_app$ docker push dimakarov/nginx-static-app:latest
 The push refers to repository [docker.io/dimakarov/nginx-static-app]
