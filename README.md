@@ -658,7 +658,75 @@ node3   Ready    <none>          63m   v1.32.0
 1. Git репозиторий с тестовым приложением и Dockerfile.
 2. Регистри с собранным docker image. В качестве регистри может быть DockerHub или [Yandex Container Registry](https://cloud.yandex.ru/services/container-registry), созданный также с помощью terraform.
 
+### Решение
+
+Использовать будем рекомендуемый вариант.
+
+Создаём каталог app и подкаталоги conf и content:
+```bash
+mkdir -p ~/test_app/{conf,content} && cd ~/test_app/
 ```
+
+- В каталоге test_app создаем [Dockerfile](https://github.com/Makarov-Denis/test_myapp/blob/main/Dockerfile):
+```yaml
+FROM nginx:latest
+
+# Configuration
+COPY conf /etc/nginx
+# Content
+COPY content /usr/share/nginx/html
+
+#Health Check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost/ || exit 1
+
+EXPOSE 80
+```
+- Также создаём файл ~/test_app/conf/nginx.conf с конфигурацией 
+```yaml
+user nginx;
+worker_processes 1;
+error_log /var/log/nginx/error.log warn;
+
+events {
+    worker_connections 1024;
+    multi_accept on;
+}
+
+http {
+    server {
+        listen   80;
+
+        location / {
+            gzip off;
+            root /usr/share/nginx/html/;
+            index index.html;
+        }
+    }
+    keepalive_timeout  60;
+}
+```
+- Cоздаём статическую страницу нашего приложения 
+```html
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Diploma of Makarov Denis</title>
+</head>
+
+<body>
+    <h2 style="margin-top: 150px; text-align: center;">Diploma of Makarov Denis</h2>
+</body>
+
+</html>
+```
+- Создаем образ:
+
+<details>
+<summary>docker build -t dimakarov/nginx-static-app .</summary>
+
+```bash
 admden@admden-VirtualBox:~/test_app$ docker build -t dimakarov/nginx-static-app .
 [+] Building 0.3s (8/8) FINISHED                                                                      docker:default
  => [internal] load build definition from Dockerfile                                                            0.1s
@@ -675,8 +743,12 @@ admden@admden-VirtualBox:~/test_app$ docker build -t dimakarov/nginx-static-app 
  => => exporting layers                                                                                         0.0s
  => => writing image sha256:adf47357141c4c94d7e94fb887814e74f3789db7754187df6ad3019d4b6cdd21                    0.0s
  => => naming to docker.io/dimakarov/nginx-static-app                                                           0.0s
+```
+</details>
 
- admden@admden-VirtualBox:~/test_app$ docker image ls
+- Для проверки соберем и запустим контейнер, проверим доступ к приложению:
+
+admden@admden-VirtualBox:~/test_app$ docker image ls
 REPOSITORY                   TAG       IMAGE ID       CREATED          SIZE
 dimakarov/nginx-static-app   latest    adf47357141c   32 minutes ago   188MB
 
@@ -684,9 +756,10 @@ admden@admden-VirtualBox:~/test_app$ docker ps
 CONTAINER ID   IMAGE                               COMMAND                  CREATED         STATUS                   PORTS                               NAMES
 d6c6d644c8d3   dimakarov/nginx-static-app:latest   "/docker-entrypoint.…"   4 minutes ago   Up 4 minutes (healthy)   0.0.0.0:80->80/tcp, :::80->80/tcp   app
 
-```
-
-```
+![image](https://github.com/user-attachments/assets/863af74a-4dff-476c-86cb-b6a227d645c2)
+- Образ успешно собран и приложение отвечает, отправим его в DockerHub:
+- 
+```bash
 admden@admden-VirtualBox:~/test_app$ docker push dimakarov/nginx-static-app:latest
 The push refers to repository [docker.io/dimakarov/nginx-static-app]
 22d592f259bd: Pushed 
@@ -701,6 +774,15 @@ eda13eb24d4c: Pushed
 latest: digest: sha256:d3f9240ad024f0bdc9b800f2e2388b705030a62a41bbbea02cd3b0a8a86eaffc size: 2192
 
 ```
+![image](https://github.com/user-attachments/assets/2c8c12cf-0279-4e8d-841c-35cd94745dab)
+
+```bash
+docker pull dimakarov/nginx-static-app
+```
+
+- Для размещения приложения выбран GitHub:
+
+https://github.com/Makarov-Denis/test_myapp.git
 
 ```
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom$ kubectl create namespace monitoring
