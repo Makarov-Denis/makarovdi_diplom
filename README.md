@@ -488,14 +488,14 @@ Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
 Outputs:
 
 external_ip_address_nodes = {
-  "node-0" = "89.169.157.113"
-  "node-1" = "84.201.167.118"
-  "node-2" = "158.160.158.22"
+  "node-0" = "89.169.132.91"
+  "node-1" = "158.160.5.148"
+  "node-2" = "158.160.159.48"
 }
 internal_ip_address_nodes = {
-  "node-0" = "10.10.1.10"
-  "node-1" = "10.10.2.25"
-  "node-2" = "10.10.3.26"
+  "node-0" = "10.10.1.31"
+  "node-1" = "10.10.2.5"
+  "node-2" = "10.10.3.32"
 }
 
 ```
