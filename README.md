@@ -716,7 +716,7 @@ http {
 </head>
 
 <body>
-    <h2 style="margin-top: 150px; text-align: center;">Diploma of Makarov Denis</h2>
+    <h2 style="margin-top: 150px; text-align: center;">Student Netology</h2>
 </body>
 
 </html>
@@ -784,7 +784,33 @@ docker pull dimakarov/nginx-static-app
 
 https://github.com/Makarov-Denis/test_myapp.git
 
-```
+---
+### Подготовка cистемы мониторинга и деплой приложения
+
+Уже должны быть готовы конфигурации для автоматического создания облачной инфраструктуры и поднятия Kubernetes кластера.  
+Теперь необходимо подготовить конфигурационные файлы для настройки нашего Kubernetes кластера.
+
+Цель:
+1. Задеплоить в кластер [prometheus](https://prometheus.io/), [grafana](https://grafana.com/), [alertmanager](https://github.com/prometheus/alertmanager), [экспортер](https://github.com/prometheus/node_exporter) основных метрик Kubernetes.
+2. Задеплоить тестовое приложение, например, [nginx](https://www.nginx.com/) сервер отдающий статическую страницу.
+
+Способ выполнения:
+1. Воспользоваться пакетом [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus), который уже включает в себя [Kubernetes оператор](https://operatorhub.io/) для [grafana](https://grafana.com/), [prometheus](https://prometheus.io/), [alertmanager](https://github.com/prometheus/alertmanager) и [node_exporter](https://github.com/prometheus/node_exporter). Альтернативный вариант - использовать набор helm чартов от [bitnami](https://github.com/bitnami/charts/tree/main/bitnami).
+
+2. Если на первом этапе вы не воспользовались [Terraform Cloud](https://app.terraform.io/), то задеплойте и настройте в кластере [atlantis](https://www.runatlantis.io/) для отслеживания изменений инфраструктуры. Альтернативный вариант 3 задания: вместо Terraform Cloud или atlantis настройте на автоматический запуск и применение конфигурации terraform из вашего git-репозитория в выбранной вами CI-CD системе при любом комите в main ветку. Предоставьте скриншоты работы пайплайна из CI/CD системы.
+
+Ожидаемый результат:
+1. Git репозиторий с конфигурационными файлами для настройки Kubernetes.
+2. Http доступ к web интерфейсу grafana.
+3. Дашборды в grafana отображающие состояние Kubernetes кластера.
+4. Http доступ к тестовому приложению.
+  
+### Решение
+
+1. Для деплоя prometheus, grafana, alertmanager выбран вариант работы с helm charts
+
+- Создадим namespace ```monitoring```:
+```bash 
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom$ kubectl create namespace monitoring
 namespace/monitoring created
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom$ kubectl get ns
@@ -796,9 +822,8 @@ kube-system       Active   4h43m
 monitoring        Active   2m14s
 
 ```
-
-```
-
+- Подключим репозиторий с promutheus:
+```bash
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom$ helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 "prometheus-community" has been added to your repositories
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom$ helm repo update
@@ -807,8 +832,8 @@ Hang tight while we grab the latest from your chart repositories...
 Update Complete. ⎈Happy Helming!⎈
 
 ```
-
-```
+- Задеплоим систему мониторинга:
+```bash
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom$ helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 "prometheus-community" already exists with the same configuration, skipping
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom$ helm repo update
@@ -829,7 +854,8 @@ kube-prometheus-stack has been installed. Check its status by running:
 Visit https://github.com/prometheus-operator/kube-prometheus for instructions on how to create & configure Alertmanager and Prometheus instances using the Operator.
 
 ```
-```
+- Проверим состояние мониторинга:
+```bash
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom/test_myapp$ kubectl get all -n monitoring 
 NAME                                                         READY   STATUS    RESTARTS   AGE
 pod/alertmanager-stable-kube-prometheus-sta-alertmanager-0   2/2     Running   0          3h33m
@@ -871,6 +897,7 @@ replicaset.apps/stable-kube-state-metrics-84d77f7b7c             1         1    
 NAME                                                                    READY   AGE
 statefulset.apps/alertmanager-stable-kube-prometheus-sta-alertmanager   1/1     3h33m
 statefulset.apps/prometheus-stable-kube-prometheus-sta-prometheus       1/1     3h33m
+
 ```
 
 
