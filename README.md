@@ -52,7 +52,7 @@
 ### Решение
 
 1. Создал новый workspace и сервисный аккаунт в нем
-(![image](https://github.com/user-attachments/assets/b90f1daf-8ed9-4815-8ec6-84368712f171)
+![image](https://github.com/user-attachments/assets/b90f1daf-8ed9-4815-8ec6-84368712f171)
 
 2. Для подготовки ```backend``` для Terraform выбрал рекомендуемый вариант S3 bucket:
 - для начала подготовил [bucket.tf](https://github.com/Makarov-Denis/makarovdi_diplom/blob/main/terraform/bucket/bucket.tf) для создания сервисного аккаунта по управлению bucket и созданию хранилища для backend, нужные данные для доступа к bucket выносятся в файл ```secret.backend.tfvars``` для инициализации основного terraform:
