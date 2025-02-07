@@ -60,7 +60,7 @@
 <details>
 <summary>terraform apply</summary>
 
-```
+```bash
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom/terraform/bucket$ terraform apply
 
 Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following
@@ -150,9 +150,26 @@ local_file.backendConf: Creation complete after 0s [id=2c17e76de116f7d6c227d6eac
 Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
 
 ```
+</details>
 
-```
+![image](https://github.com/user-attachments/assets/2c29f3f4-2f7b-4f0b-afec-a04a27d17fa5)
 
+- инициализируем основной terraform, используя данные из ```secret.backend.tfvars``` для доступа к bucket:
+[provider.tf](https://github.com/Makarov-Denis/makarovdi_diplom/blob/main/terraform/provider.tf)
+
+backend:
+
+![image](https://github.com/user-attachments/assets/adb66d46-37c9-4b5a-bf41-2ae4e2e64e7a)
+
+- создал VPC с подсетями в разных зонах доступности:
+
+![image](https://github.com/user-attachments/assets/90981274-f262-4960-aaf2-e28e34f7a35e)
+
+- выполнение команды ```terraform destroy``` и ```terraform apply``` без дополнительных ручных действий:
+<details>
+<summary>terraform apply --auto-approve</summary>
+
+```bash
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom/terraform$ terraform apply --auto-approve
 
 Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following
@@ -482,6 +499,31 @@ internal_ip_address_nodes = {
 }
 
 ```
+</details>
+
+- При длительной неактивности Yandex отключает виртуальные машины, при повторном включении происходит смена публичных адресов, что разрушит кластер k8s, который мы будем разворачивать на следующем этапе. Поэтому, на текущем этапе, имеет смысл дополнительно произвести небольшие манипуляции для стабилизации кластера, а именно - зарезервировать полученные адреса к Yandex Cloud:
+
+---
+
+### Создание Kubernetes кластера
+
+На этом этапе необходимо создать [Kubernetes](https://kubernetes.io/ru/docs/concepts/overview/what-is-kubernetes/) кластер на базе предварительно созданной инфраструктуры.   Требуется обеспечить доступ к ресурсам из Интернета.
+
+Это можно сделать двумя способами:
+
+1. Рекомендуемый вариант: самостоятельная установка Kubernetes кластера.  
+   а. При помощи Terraform подготовить как минимум 3 виртуальных машины Compute Cloud для создания Kubernetes-кластера. Тип виртуальной машины следует выбрать самостоятельно с учётом требовании к производительности и стоимости. Если в дальнейшем поймете, что необходимо сменить тип инстанса, используйте Terraform для внесения изменений.  
+   б. Подготовить [ansible](https://www.ansible.com/) конфигурации, можно воспользоваться, например [Kubespray](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)  
+   в. Задеплоить Kubernetes на подготовленные ранее инстансы, в случае нехватки каких-либо ресурсов вы всегда можете создать их при помощи Terraform.
+2. Альтернативный вариант: воспользуйтесь сервисом [Yandex Managed Service for Kubernetes](https://cloud.yandex.ru/services/managed-kubernetes)  
+  а. С помощью terraform resource для [kubernetes](https://registry.terraform.io/providers/yandex-cloud/yandex/latest/docs/resources/kubernetes_cluster) создать **региональный** мастер kubernetes с размещением нод в разных 3 подсетях      
+  б. С помощью terraform resource для [kubernetes node group](https://registry.terraform.io/providers/yandex-cloud/yandex/latest/docs/resources/kubernetes_node_group)
+  
+Ожидаемый результат:
+
+1. Работоспособный Kubernetes кластер.
+2. В файле `~/.kube/config` находятся данные для доступа к кластеру.
+3. Команда `kubectl get pods --all-namespaces` отрабатывает без ошибок.
 
 ```
 
