@@ -525,7 +525,53 @@ internal_ip_address_nodes = {
 2. В файле `~/.kube/config` находятся данные для доступа к кластеру.
 3. Команда `kubectl get pods --all-namespaces` отрабатывает без ошибок.
 
+### Решение
+
+Выбран вариант создания кластера k8s, используя Kubespray:
+
+- Скачаем репозиторий, используя команду ```git clone https://github.com/kubernetes-sigs/kubespray```
+- Переходим в директорию ```kubespray``` и запускаем установку зависимости ```pip3.11 install -r requirements.txt```
+- Создаем директорию ```inventory/mycluster```, копированием образца: ```cp -rfp inventory/sample inventory/mycluster```
+- Используя адреса хостов, полученные на прошлом этапе, создадим файл ```hosts.yaml```
+
+- Правим полученный файл под нужды текущей задачи kubespray/inventory/mycluster/hosts.yaml
+```bash
+all:
+  hosts:
+    node1:
+      ansible_host: 89.169.132.91
+      ip: 10.10.1.31
+    node2:
+      ansible_host: 158.160.5.148
+      ip: 10.10.2.5
+    node3:
+      ansible_host: 158.160.159.48
+      ip: 10.10.3.32
+  children:
+    kube_control_plane:
+      hosts:
+        node1:
+    kube_node:
+      hosts:
+        node2:
+        node3:
+    etcd:
+      hosts:
+        node1:
+    k8s_cluster:
+      children:
+        kube_control_plane:
+        kube_node:
+    calico_rr:
+      hosts: {}
 ```
+- Для доступа к кластеру извне нужно добавить параметр supplementary_addresses_in_ssl_keys: [89.169.132.91] в файл inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml, что является ip мастер ноды.
+- И далее запускаем установку Kubernetes командой:
+```bash
+ansible-playbook -i inventory/mycluster/hosts.yaml -u ubuntu --become --become-user=root cluster.yml
+```
+
+```bash
 
 PLAY RECAP *****************************************************************************************************
 node1                      : ok=656  changed=126  unreachable=0    failed=0    skipped=1068 rescued=0    ignored=6   
@@ -555,8 +601,18 @@ download : Download_container | Download image if required ---------------------
 kubernetes/kubeadm : Kubeadm | reload systemd ---------------------------------------------------------- 13.37s
 download : Download_container | Download image if required --------------------------------------------- 13.18s
 ```
-
+- Копируем ~/.kube/config с мастер ноды командой:
+```bash
+admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom/kubespray$ mkdir -p ~/.kube && ssh ubuntu@89.169.132.91 "sudo cat /root/.kube/config" >> ~/.kube/config
+The authenticity of host '89.169.132.91 (89.169.132.91)' can't be established.
+ECDSA key fingerprint is SHA256:VxkWCGH1BDzv80B5QKOnwPqi6ZWFgWTWI/Kl+7QhE9o.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '89.169.132.91' (ECDSA) to the list of known hosts.
 ```
+- Заменяем ip на внешний ip мастер ноды: https://89.169.132.91:6443
+- Кластер создан, доступно подключение через интернет:
+
+```bash
 admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom/kubespray$ kubectl get pods --all-namespaces
 NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE
 kube-system   calico-kube-controllers-69d8557557-lj7pw   1/1     Running   0          60m
@@ -584,6 +640,23 @@ node1   Ready    control-plane   64m   v1.32.0
 node2   Ready    <none>          63m   v1.32.0
 node3   Ready    <none>          63m   v1.32.0
 ```
+---
+### Создание тестового приложения
+
+Для перехода к следующему этапу необходимо подготовить тестовое приложение, эмулирующее основное приложение разрабатываемое вашей компанией.
+
+Способ подготовки:
+
+1. Рекомендуемый вариант:  
+   а. Создайте отдельный git репозиторий с простым nginx конфигом, который будет отдавать статические данные.  
+   б. Подготовьте Dockerfile для создания образа приложения.  
+2. Альтернативный вариант:  
+   а. Используйте любой другой код, главное, чтобы был самостоятельно создан Dockerfile.
+
+Ожидаемый результат:
+
+1. Git репозиторий с тестовым приложением и Dockerfile.
+2. Регистри с собранным docker image. В качестве регистри может быть DockerHub или [Yandex Container Registry](https://cloud.yandex.ru/services/container-registry), созданный также с помощью terraform.
 
 ```
 admden@admden-VirtualBox:~/test_app$ docker build -t dimakarov/nginx-static-app .
