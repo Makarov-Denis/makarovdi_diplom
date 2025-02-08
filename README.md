@@ -910,6 +910,248 @@ statefulset.apps/prometheus-stable-kube-prometheus-sta-prometheus       1/1     
 - Логин:```admin``` Пароль:```prom-operator```
 ![grafana](https://github.com/user-attachments/assets/8721ae98-821d-45a0-8b17-92e464ac2d82)
 
+2. Деплой приложения
+
+- Для деплоя приложения сначала создадим манифест [deployment.yaml](https://github.com/Makarov-Denis/test_myapp/blob/main/deploy/deployment.yaml).  Был выбран ```DaemonSet```, т.к. на текущий момент достаточно получения по 1 поду, но на каждой worker ноде:
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: myapp
+  namespace: monitoring
+  labels:
+    app: myapp
+spec:
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: myapp
+        image: dimakarov/nginx-static-app:latest
+      restartPolicy: Always
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+  namespace: monitoring
+spec:
+  selector:
+    app: myapp
+  type: NodePort
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30080  
+   
+```
+- Развернем приложение:
+![image](https://github.com/user-attachments/assets/3c968b40-457a-403a-a3ef-80108c1c4e7a)
+- Проверим доступ до приложения http://89.169.132.91:30080
+![image](https://github.com/user-attachments/assets/fac26b7c-f92f-4b69-a66a-4f772e59e7b6)
+
+---
+### Установка и настройка CI/CD
+
+Осталось настроить ci/cd систему для автоматической сборки docker image и деплоя приложения при изменении кода.
+
+Цель:
+
+1. Автоматическая сборка docker образа при коммите в репозиторий с тестовым приложением.
+2. Автоматический деплой нового docker образа.
+
+Можно использовать [teamcity](https://www.jetbrains.com/ru-ru/teamcity/), [jenkins](https://www.jenkins.io/), [GitLab CI](https://about.gitlab.com/stages-devops-lifecycle/continuous-integration/) или GitHub Actions.
+
+Ожидаемый результат:
+
+1. Интерфейс ci/cd сервиса доступен по http.
+2. При любом коммите в репозиторие с тестовым приложением происходит сборка и отправка в регистр Docker образа.
+3. При создании тега (например, v1.0.0) происходит сборка и отправка с соответствующим label в регистри, а также деплой соответствующего Docker образа в кластер Kubernetes.
+
+
+### Решение
+
+Для автоматической сборки docker image и деплоя приложения при изменении кода будет использоваться ```Github Actions```
+
+- Для работы CI-CD в ```Github Actions``` требуются учетные данные:
+- Создадим в Dockerhub секретный токен
+- Добавим в ```Github Actions``` секреты для работы с DockerHub и кластером Kubernetes
+
+```bash
+KUBE_CONFIG_DATA #дополнительно закодируем base64
+admden@admden-VirtualBox:~/terraform-yandex-oblako/makarovdi_diplom cat ~/.kube/config | base64
+...
+bFdRVlJGSUV0RldTMHRMUzB0Q2c9PQo=
+
+DOCKERHUB_TOKEN
+
+DOCKERHUB_USERNAME
+```
+- Далее настроим Workflow для автоматической сборки и деплоя приложения:
+<details>
+<summary>Workflow</summary>
+
+```yml
+name: CI/CD Pipeline for nginx-static-app
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+env:
+  IMAGE_TAG: dimakarov/nginx-static-app
+  RELEASE_NAME: myapp
+  NAMESPACE: monitoring
+
+jobs:
+  build-and-push:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract version from tag or commit message
+        run: |
+          echo "GITHUB_REF: ${GITHUB_REF}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(git log -1 --pretty=format:%B | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          fi
+          if [[ -z "$VERSION" ]]; then
+            echo "No version found in the commit message or tag"
+            exit 1
+          fi
+          VERSION=${VERSION//[[:space:]]/}  # Remove any spaces
+          echo "Using version: $VERSION"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_TAG }}:${{ env.VERSION }}
+
+  deploy:
+    needs: build-and-push
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: List files in the working directory
+        run: |
+          ls -la
+
+      - name: Set up Kubernetes
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.21.0'
+
+      - name: Extract version from tag or commit message
+        run: |
+          echo "GITHUB_REF: ${GITHUB_REF}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(git log -1 --pretty=format:%B | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          fi
+          if [[ -z "$VERSION" ]]; then
+            echo "No version found in the commit message or tag"
+            exit 1
+          fi
+          VERSION=${VERSION//[[:space:]]/}  # Remove any spaces
+          echo "Using version: $VERSION"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Replace image tag in deployment.yaml
+        run: |
+          if [ ! -f ./deploy/deployment.yaml ]; then
+            echo "deployment.yaml not found in the current directory"
+            exit 1
+          fi
+          sed -i "s|image: dimakarov/nginx-static-app:.*|image: ${{ env.IMAGE_TAG }}:${{ env.VERSION }}|" ./deploy/deployment.yaml
+
+      - name: Create kubeconfig
+        run: |
+          mkdir -p $HOME/.kube/
+
+      - name: Authenticate to Kubernetes cluster
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+        run: |
+          echo "${KUBE_CONFIG_DATA}" | base64 --decode > ${HOME}/.kube/config
+          kubectl config view
+          kubectl get nodes
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f ./deploy/deployment.yaml
+          kubectl get daemonsets -n monitoring
+          kubectl get pods -n monitoring
+          kubectl describe daemonset myapp -n monitoring
+          kubectl describe service myapp-service -n monitoring
+```
+
+</details>
+
+https://github.com/Makarov-Denis/test_myapp/actions
+
+![githubactions](https://github.com/user-attachments/assets/03a068b4-ec7e-4eac-a579-aec0895c0054)
+
+- Добавим тэг для приложения и отправим коммит с изменениями:
+  
+![actions1](https://github.com/user-attachments/assets/d40806e7-fbff-40a5-becb-1be032b2e80d)
+
+![actions2](https://github.com/user-attachments/assets/3bd6577a-816a-4682-b49c-2397f261bbcd)
+
+![actions 3](https://github.com/user-attachments/assets/a319ae06-6f1f-4251-979b-a753b8a1acb4)
+
+![actions 4](https://github.com/user-attachments/assets/19e89f12-8226-4cbe-a7bc-6507dcc624e0)
+
+---
+## Что необходимо для сдачи задания?
+
+1. Репозиторий с конфигурационными файлами Terraform и готовность продемонстрировать создание всех ресурсов с нуля.
+2. Пример pull request с комментариями созданными atlantis'ом или снимки экрана из Terraform Cloud или вашего CI-CD-terraform pipeline.
+3. Репозиторий с конфигурацией ansible, если был выбран способ создания Kubernetes кластера при помощи ansible.
+4. Репозиторий с Dockerfile тестового приложения и ссылка на собранный docker image.
+5. Репозиторий с конфигурацией Kubernetes кластера.
+6. Ссылка на тестовое приложение и веб интерфейс Grafana с данными доступа.
+7. Все репозитории рекомендуется хранить на одном ресурсе (github, gitlab)
+
+
+
+
+
+
+
 
 
 
