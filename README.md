@@ -899,6 +899,20 @@ statefulset.apps/alertmanager-stable-kube-prometheus-sta-alertmanager   1/1     
 statefulset.apps/prometheus-stable-kube-prometheus-sta-prometheus       1/1     3h33m
 
 ```
+- Для подключения к мониторингу доступа извне требуется настроить сервисы prometheus и grafana, сменить тип сервиса и добавить внешний порт:
+![image](https://github.com/user-attachments/assets/ffc77e29-f38d-4eef-9a72-b020f53379f7)
+
+![image](https://github.com/user-attachments/assets/919bc25b-bc5d-4c40-a6fd-f5ccb07acc47)
+
+- Доступ к prometheus http:/89.169.132.91:30100
+![prometheus](https://github.com/user-attachments/assets/a37b4800-6dba-4163-86df-012e3a634f29)
+- Доступ к grafana http://158.160.44.112:30200
+- Логин:```admin``` Пароль:```prom-operator```
+![grafana](https://github.com/user-attachments/assets/8721ae98-821d-45a0-8b17-92e464ac2d82)
+
+
+
+
 
 
 
