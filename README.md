@@ -904,7 +904,7 @@ statefulset.apps/prometheus-stable-kube-prometheus-sta-prometheus       1/1     
 
 ![image](https://github.com/user-attachments/assets/919bc25b-bc5d-4c40-a6fd-f5ccb07acc47)
 
-- Доступ к prometheus http:/89.169.132.91:30100
+- Доступ к prometheus http://89.169.132.91:30100
 ![prometheus](https://github.com/user-attachments/assets/a37b4800-6dba-4163-86df-012e3a634f29)
 - Доступ к grafana http://158.160.44.112:30200
 - Логин:```admin``` Пароль:```prom-operator```
